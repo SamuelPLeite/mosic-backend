@@ -1,6 +1,7 @@
 const express = require('express')
 
 const musicRouter = require('./routes/music')
+const usersRouter = require('./routes/users')
 const HttpError = require('./models/http-error')
 
 
@@ -9,6 +10,7 @@ const app = express()
 app.use(express.json())
 
 app.use('/api/music', musicRouter)
+app.use('/api/users', usersRouter)
 
 app.use((req, res, next) => {
   throw new HttpError('Route not found.', 404)

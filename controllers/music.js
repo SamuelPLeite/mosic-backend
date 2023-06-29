@@ -1,4 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid')
+const { validationResult } = require('express-validator')
 
 const HttpError = require('../models/http-error')
 
@@ -48,8 +49,15 @@ const getPostsByUserId = (req, res, next) => {
 }
 
 const createMusicPost = (req, res, next) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    console.log(errors)
+    return next(new HttpError('Invalid input detected.', 422))
+  }
+
   const { title, artist, description, rating, isSong, creatorId } = req.body
   const newMusicPost = {
+    id: uuidv4(),
     title,
     artist,
     description,
@@ -76,11 +84,20 @@ const updateMusicPost = (req, res, next) => {
   }
 
   MUSIC.splice(MUSIC.indexOf(music), 1, updatedMusicPost)
-  res.status(201).json({ updatedMusic: updatedMusicPost })
+  res.status(200).json({ music: updatedMusicPost })
+}
 
+const deleteMusicPost = (req, res, next) => {
+  const mid = req.params.mid
+  if (!MUSIC.find(music => music.id === mid))
+    return next(new HttpError('No place found with sent ID.', 404))
+
+  MUSIC.splice(MUSIC.findIndex(mus => mus.id === mid), 1)
+  res.status(200).json({ message: 'Deleted music post.' })
 }
 
 exports.getPostById = getPostById
 exports.getPostsByUserId = getPostsByUserId
 exports.createMusicPost = createMusicPost
 exports.updateMusicPost = updateMusicPost
+exports.deleteMusicPost = deleteMusicPost
