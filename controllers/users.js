@@ -1,8 +1,7 @@
-const { v4: uuidv4 } = require('uuid')
 const { validationResult } = require('express-validator')
 
-
 const HttpError = require('../models/http-error')
+const User = require('../models/user')
 
 
 const USERS = [
@@ -14,24 +13,38 @@ const USERS = [
   }
 ]
 
-const getUsers = (req, res, next) => {
+const getUsers = async (req, res, next) => {
+  let users
+  try {
+    users = await User.find({}, '-password')
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't get users.", 500))
+  }
 
-  res.json({ users: USERS })
+  res.json({ users })
+
 }
 
-const login = (req, res, next) => {
+const login = async (req, res, next) => {
   const { email, password } = req.body
 
-  const emailUser = USERS.find(user => user.email === email)
+  let existUser
+  try {
+    existUser = await User.findOne({ email })
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't resolve email query.", 500))
+  }
 
-  if (!emailUser || emailUser.password !== password) {
+  if (!existUser || existUser.password !== password) {
     return next(new HttpError('User not found by email or wrong password.', 401))
   }
 
   res.json({ message: 'Logged in!' })
 }
 
-const signup = (req, res, next) => {
+const signup = async (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
     console.log(errors)
@@ -40,17 +53,31 @@ const signup = (req, res, next) => {
 
   const { name, email, password } = req.body
 
-  if (USERS.find(user => user.email === email))
-    return next(new HttpError('Email already has user associated with it.', 422))
-
-  const newUser = {
-    id: uuidv4(),
-    name,
-    email,
-    password
+  let existUser
+  try {
+    existUser = await User.findOne({ email })
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't resolve email query.", 500))
   }
 
-  USERS.push(newUser)
+  if (existUser)
+    return next(new HttpError('User already exists with provided email.', 422))
+
+  const newUser = new User({
+    name,
+    email,
+    password,
+    image: 'image.jpg',
+    musicPosts: []
+  })
+
+  try {
+    await newUser.save()
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't create user.", 500))
+  }
 
   res.status(201).json({ user: newUser })
 }

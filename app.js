@@ -1,4 +1,5 @@
 const express = require('express')
+const mongoose = require('mongoose')
 
 const musicRouter = require('./routes/music')
 const usersRouter = require('./routes/users')
@@ -25,4 +26,7 @@ app.use((error, req, res, next) => {
   res.json({ message: error.message || 'Unknown error.' })
 })
 
-app.listen(3001)
+mongoose.connect('mongodb+srv://thesamhpl:FtuB64TcNHn8jn36@mosiccluster.mexbla0.mongodb.net/mosic?retryWrites=true&w=majority')
+  .then(() => {
+    app.listen(3001)
+  }).catch(error => console.log(error))

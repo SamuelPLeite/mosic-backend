@@ -1,7 +1,9 @@
-const { v4: uuidv4 } = require('uuid')
 const { validationResult } = require('express-validator')
+const mongoose = require('mongoose')
 
 const HttpError = require('../models/http-error')
+const MusicPost = require('../models/musicpost')
+const User = require('../models/user')
 
 const MUSIC = [
   {
@@ -26,10 +28,17 @@ const MUSIC = [
   }
 ]
 
-const getPostById = (req, res, next) => {
+const getPostById = async (req, res, next) => {
   const mid = req.params.mid
 
-  const music = MUSIC.find(mus => mus.id === mid)
+  let music
+  try {
+    music = await MusicPost.findById(mid)
+  } catch (err) {
+    next(new HttpError("Database error, couldn't find post.", 500))
+    console.log(err)
+    return
+  }
 
   if (!music)
     return next(new HttpError('Invalid Music ID, no post found.', 404))
@@ -37,10 +46,17 @@ const getPostById = (req, res, next) => {
   res.json({ music })
 }
 
-const getPostsByUserId = (req, res, next) => {
+const getPostsByUserId = async (req, res, next) => {
   const uid = req.params.uid
 
-  const userMusic = MUSIC.filter(mus => mus.creatorId === uid)
+  let userMusic
+  try {
+    userMusic = await MusicPost.find({ creatorId: uid })
+  } catch (err) {
+    next(new HttpError("Database error, couldn't find posts.", 500))
+    console.log(err)
+    return
+  }
 
   if (userMusic.length === 0)
     return next(new HttpError('No music posts found for the User ID.', 404))
@@ -48,7 +64,7 @@ const getPostsByUserId = (req, res, next) => {
   res.json({ userMusic })
 }
 
-const createMusicPost = (req, res, next) => {
+const createMusicPost = async (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
     console.log(errors)
@@ -56,43 +72,88 @@ const createMusicPost = (req, res, next) => {
   }
 
   const { title, artist, description, rating, isSong, creatorId } = req.body
-  const newMusicPost = {
-    id: uuidv4(),
+  const newMusicPost = new MusicPost({
     title,
     artist,
     description,
     rating,
     isSong,
     creatorId
+  })
+
+  let user
+  try {
+    user = await User.findById(creatorId)
+  } catch (err) {
+    next(new HttpError("Database error, couldn't resolve user search.", 500))
+    console.log(err)
+    return
   }
 
-  MUSIC.push(newMusicPost)
+  if (!user)
+    return next(new HttpError("Creator user for new post could not be found.", 404))
+
+  try {
+    const session = await mongoose.startSession()
+    session.startTransaction()
+
+    await newMusicPost.save({ session })
+    user.musicPosts.push(newMusicPost)
+    await user.save({ session })
+
+    await session.commitTransaction()
+  } catch (err) {
+    next(new HttpError("Database error, couldn't save new post.", 500))
+    console.log(err)
+    return
+  }
+
   res.status(201).json({ music: newMusicPost })
 }
 
-const updateMusicPost = (req, res, next) => {
+const updateMusicPost = async (req, res, next) => {
   const mid = req.params.mid
   const { description, rating } = req.body
 
-  const music = MUSIC.find(mus => mus.id === mid)
-
-  const updatedMusicPost = {
-    ...music,
-    description,
-    rating,
-
+  let music
+  try {
+    music = await MusicPost.findByIdAndUpdate(mid, { description, rating }, { returnDocument: 'after' })
+  } catch (err) {
+    next(new HttpError("Database error, couldn't update post.", 500))
+    console.log(err)
+    return
   }
 
-  MUSIC.splice(MUSIC.indexOf(music), 1, updatedMusicPost)
-  res.status(200).json({ music: updatedMusicPost })
+  res.status(200).json({ music })
 }
 
-const deleteMusicPost = (req, res, next) => {
+const deleteMusicPost = async (req, res, next) => {
   const mid = req.params.mid
-  if (!MUSIC.find(music => music.id === mid))
-    return next(new HttpError('No place found with sent ID.', 404))
 
-  MUSIC.splice(MUSIC.findIndex(mus => mus.id === mid), 1)
+  let music
+  try {
+    music = await MusicPost.findById(mid).populate('creatorId')
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't delete post.", 500))
+  }
+
+  if (!music)
+    return next(new HttpError('No music post found for provided ID.', 404))
+
+  try {
+    const session = await mongoose.startSession()
+    session.startTransaction()
+
+    await MusicPost.findByIdAndDelete(mid, { session })
+    music.creatorId.musicPosts.pull(music)
+    await music.creatorId.save({ session })
+
+    await session.commitTransaction()
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't delete post.", 500))
+  }
   res.status(200).json({ message: 'Deleted music post.' })
 }
 
