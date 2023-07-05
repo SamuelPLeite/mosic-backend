@@ -41,7 +41,7 @@ const login = async (req, res, next) => {
     return next(new HttpError('User not found by email or wrong password.', 401))
   }
 
-  res.json({ message: 'Logged in!' })
+  res.json({ user: existUser })
 }
 
 const signup = async (req, res, next) => {

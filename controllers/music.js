@@ -85,9 +85,8 @@ const createMusicPost = async (req, res, next) => {
   try {
     user = await User.findById(creatorId)
   } catch (err) {
-    next(new HttpError("Database error, couldn't resolve user search.", 500))
     console.log(err)
-    return
+    return next(new HttpError("Database error, couldn't resolve user search.", 500))
   }
 
   if (!user)
@@ -103,9 +102,8 @@ const createMusicPost = async (req, res, next) => {
 
     await session.commitTransaction()
   } catch (err) {
-    next(new HttpError("Database error, couldn't save new post.", 500))
     console.log(err)
-    return
+    return next(new HttpError("Database error, couldn't save new post.", 500))
   }
 
   res.status(201).json({ music: newMusicPost })

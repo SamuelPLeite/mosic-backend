@@ -4,6 +4,7 @@ const cors = require('cors')
 
 const musicRouter = require('./routes/music')
 const usersRouter = require('./routes/users')
+const deezerRouter = require('./routes/deezer')
 const HttpError = require('./models/http-error')
 
 
@@ -14,6 +15,7 @@ app.use(express.json())
 
 app.use('/api/music', musicRouter)
 app.use('/api/users', usersRouter)
+app.use('/api/deezer', deezerRouter)
 
 app.use((req, res, next) => {
   throw new HttpError('Route not found.', 404)
