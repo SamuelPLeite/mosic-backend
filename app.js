@@ -1,3 +1,6 @@
+const fs = require('fs')
+const path = require('path')
+
 const express = require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
@@ -13,6 +16,8 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+app.use('/uploads/images', express.static(path.join('uploads', 'images')))
+
 app.use('/api/music', musicRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/deezer', deezerRouter)
@@ -22,6 +27,9 @@ app.use((req, res, next) => {
 })
 
 app.use((error, req, res, next) => {
+  if (req.file) {
+    fs.unlink(req.file.path, () => console.log(err))
+  }
   if (res.headerSent) {
     return next(error)
   }

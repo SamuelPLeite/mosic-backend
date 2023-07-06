@@ -3,7 +3,7 @@ const axios = require('axios')
 
 const router = express.Router()
 
-router.get('/', async (req, res, next) => {
+router.post('/', async (req, res, next) => {
   const { title, artist, isSong } = req.body
 
   const isTrackString = isSong ? 'track' : 'album'
