@@ -5,29 +5,6 @@ const HttpError = require('../models/http-error')
 const MusicPost = require('../models/musicpost')
 const User = require('../models/user')
 
-const MUSIC = [
-  {
-    id: "mid1",
-    title: "Notget",
-    artist: "Björk",
-    image: "https://upload.wikimedia.org/wikipedia/pt/f/f1/Bj%C3%B6rk_-_Vulnicura_%28Official_Album_Cover%29.png",
-    description: "What a song! :D",
-    rating: "5/5",
-    isSong: true,
-    creatorId: "uid1"
-  },
-  {
-    id: "mid2",
-    title: "Lionsong",
-    artist: "Björk",
-    image: "https://upload.wikimedia.org/wikipedia/pt/f/f1/Bj%C3%B6rk_-_Vulnicura_%28Official_Album_Cover%29.png",
-    description: "What a song! :D",
-    rating: "5/5",
-    isSong: true,
-    creatorId: "uid2"
-  }
-]
-
 const getPostById = async (req, res, next) => {
   const mid = req.params.mid
 
@@ -71,26 +48,17 @@ const createMusicPost = async (req, res, next) => {
     return next(new HttpError('Invalid input detected.', 422))
   }
 
-  const { title, artist, description, rating, isSong, creatorId } = req.body
+  const { title, artist, description, rating, isSong } = req.body
   const newMusicPost = new MusicPost({
     title,
     artist,
     description,
     rating,
     isSong,
-    creatorId
+    creatorId: req.user.id
   })
 
-  let user
-  try {
-    user = await User.findById(creatorId)
-  } catch (err) {
-    console.log(err)
-    return next(new HttpError("Database error, couldn't resolve user search.", 500))
-  }
-
-  if (!user)
-    return next(new HttpError("Creator user for new post could not be found.", 404))
+  const user = req.user
 
   try {
     const session = await mongoose.startSession()
@@ -115,7 +83,13 @@ const updateMusicPost = async (req, res, next) => {
 
   let music
   try {
-    music = await MusicPost.findByIdAndUpdate(mid, { description, rating }, { returnDocument: 'after' })
+    music = await MusicPost.findOneAndUpdate(
+      {
+        _id: mid,
+        creatorId: req.user.id
+      },
+      { description, rating },
+      { returnDocument: 'after' })
   } catch (err) {
     next(new HttpError("Database error, couldn't update post.", 500))
     console.log(err)
@@ -138,6 +112,9 @@ const deleteMusicPost = async (req, res, next) => {
 
   if (!music)
     return next(new HttpError('No music post found for provided ID.', 404))
+
+  if (music.creatorId.id !== req.user.id)
+    return next(new HttpError('You are not allowed to delete this post!', 401))
 
   try {
     const session = await mongoose.startSession()

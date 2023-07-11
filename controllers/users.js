@@ -1,17 +1,10 @@
 const { validationResult } = require('express-validator')
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 
 const HttpError = require('../models/http-error')
 const User = require('../models/user')
 
-
-const USERS = [
-  {
-    id: 'uid1',
-    name: 'Sam Leite',
-    email: 'ana@mary.b',
-    password: 'PAXXWORD'
-  }
-]
 
 const getUsers = async (req, res, next) => {
   let users
@@ -37,18 +30,43 @@ const login = async (req, res, next) => {
     return next(new HttpError("Database error, couldn't resolve email query.", 500))
   }
 
-  if (!existUser || existUser.password !== password) {
-    return next(new HttpError('User not found by email or wrong password.', 401))
+  if (!existUser) {
+    return next(new HttpError('User not found by email.', 403))
   }
 
-  res.json({ user: existUser })
+  let isValPass = false
+  try {
+    isValPass = await bcrypt.compare(password, existUser.password)
+  } catch (err) {
+    return next(new HttpError('Could not log user in, try again.', 500))
+  }
+
+  if (!isValPass)
+    return next(new HttpError('Invalid credentials.', 403))
+
+  let token
+  try {
+    token = jwt.sign(
+      { userId: existUser.id, email: existUser.email },
+      'secret-key-kaka',
+      { expiresIn: '1h' }
+    )
+  } catch (err) {
+    return next(new HttpError("Log in error, do try again.", 500))
+  }
+
+  res.json({
+    userId: existUser.id,
+    username: existUser.name,
+    token
+  })
 }
 
 const signup = async (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
     console.log(errors)
-    return next(new HttpError('Invalid input detected.', 422))
+    return next(new HttpError("Invalid input detected.", 422))
   }
 
   const { name, email, password } = req.body
@@ -62,12 +80,19 @@ const signup = async (req, res, next) => {
   }
 
   if (existUser)
-    return next(new HttpError('User already exists with provided email.', 422))
+    return next(new HttpError("User already exists with provided email.", 422))
+
+  let hashedPassword
+  try {
+    hashedPassword = await bcrypt.hash(password, 12)
+  } catch (err) {
+    return next(new HttpError("Error, user couldn't be created", 500))
+  }
 
   const newUser = new User({
     name,
     email,
-    password,
+    password: hashedPassword,
     image: req.file.path,
     musicPosts: []
   })
@@ -79,7 +104,18 @@ const signup = async (req, res, next) => {
     return next(new HttpError("Database error, couldn't create user.", 500))
   }
 
-  res.status(201).json({ user: newUser })
+  let token
+  try {
+    token = jwt.sign(
+      { userId: newUser.id, email: newUser.email },
+      'secret-key-kaka',
+      { expiresIn: '1h' }
+    )
+  } catch (err) {
+    return next(new HttpError("Sign up error, do try again.", 500))
+  }
+
+  res.status(201).json({ token, userId: newUser.id, username: newUser.name })
 }
 
 exports.getUsers = getUsers
