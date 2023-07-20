@@ -20,7 +20,7 @@ const userExtractor = async (request, response, next) => {
   } catch (err) {
     return next(new HttpError('Invalid token.', 403))
   }
-  request.user = await User.findById(decodedToken.userId)
+  request.user = await User.findById(decodedToken.userId).populate('respinPosts', 'musicPost')
 
   next()
 }

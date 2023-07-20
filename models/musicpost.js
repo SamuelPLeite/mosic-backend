@@ -7,6 +7,17 @@ const musicPostSchema = new mongoose.Schema({
   description: { type: String },
   rating: { type: Number },
   isSong: { type: Boolean, required: true },
+  likes: [{
+    type: mongoose.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }],
+  comments: [{
+    type: mongoose.Types.ObjectId,
+    ref: 'Comment',
+    required: true
+
+  }],
   creatorId: {
     type: mongoose.Types.ObjectId,
     ref: 'User',

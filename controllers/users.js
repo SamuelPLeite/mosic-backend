@@ -94,7 +94,8 @@ const signup = async (req, res, next) => {
     email,
     password: hashedPassword,
     image: req.file.path,
-    musicPosts: []
+    musicPosts: [],
+    respinPosts: []
   })
 
   try {

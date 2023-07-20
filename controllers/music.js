@@ -3,6 +3,7 @@ const mongoose = require('mongoose')
 
 const HttpError = require('../models/http-error')
 const MusicPost = require('../models/musicpost')
+const RespinPost = require('../models/respin')
 const User = require('../models/user')
 
 const getPostById = async (req, res, next) => {
@@ -10,7 +11,14 @@ const getPostById = async (req, res, next) => {
 
   let music
   try {
-    music = await MusicPost.findById(mid)
+    music = await MusicPost.findById(mid).populate({
+      path: 'comments',
+      populate: {
+        path: 'creatorId',
+        select: '_id name image'
+      }
+    })
+    console.log(music.comments)
   } catch (err) {
     next(new HttpError("Database error, couldn't find post.", 500))
     console.log(err)
@@ -28,17 +36,55 @@ const getPostsByUserId = async (req, res, next) => {
 
   let userMusic
   try {
-    userMusic = await MusicPost.find({ creatorId: uid })
+    userMusic = await MusicPost.find({ creatorId: uid }).lean().populate({
+      path: 'comments', populate: {
+        path: 'creatorId',
+        select: '_id name image'
+      }
+    })
   } catch (err) {
     next(new HttpError("Database error, couldn't find posts.", 500))
     console.log(err)
     return
   }
 
-  if (userMusic.length === 0)
+  let user, userRespins
+  try {
+    user = await User.findById(uid).lean().populate({
+      path: 'respinPosts',
+      populate: {
+        path: 'musicPost',
+        populate: {
+          path: 'comments',
+          populate: {
+            path: 'creatorId',
+            select: '_id name image'
+          }
+        }
+      }
+    })
+    userRespins = user.respinPosts.filter(respin => respin.musicPost !== null)
+  } catch (err) {
+    next(new HttpError("Database error, couldn't find posts.", 500))
+    console.log(err)
+    return
+  }
+
+  if (userMusic.length === 0 && userRespins.length === 0)
     return next(new HttpError('No music posts found for the User ID.', 404))
 
-  res.json({ userMusic })
+  const userPosts = userRespins ? userMusic.concat(userRespins) : userMusic
+  const userPostsSorted = userPosts.sort((a, b) => new Date(b._id.getTimestamp().getTime()) - new Date(a._id.getTimestamp().getTime())) // sorting based on id timestamp
+  const userPostsPop = userPostsSorted.map(post => post.musicPost ? { ...post.musicPost, respinId: post._id } : post) // populates respin posts into 'regular' posts
+    .map(({ __v, _id, ...rest }) => ({ id: _id.toString(), ...rest })) // because of lean(), manually removing __v, id to string
+  console.log(userPostsPop)
+
+  res.json({ userMusic: userPostsPop })
+}
+
+const getRespinPosts = async (req, res, next) => {
+  const respinPosts = req.user.respinPosts.map(post => post.musicPost)
+  res.json({ respinPosts })
 }
 
 const createMusicPost = async (req, res, next) => {
@@ -48,13 +94,16 @@ const createMusicPost = async (req, res, next) => {
     return next(new HttpError('Invalid input detected.', 422))
   }
 
-  const { title, artist, description, rating, isSong } = req.body
+  const { title, artist, description, image, rating, isSong } = req.body
   const newMusicPost = new MusicPost({
     title,
     artist,
     description,
+    image,
     rating,
     isSong,
+    comments: [],
+    likes: [],
     creatorId: req.user.id
   })
 
@@ -132,8 +181,82 @@ const deleteMusicPost = async (req, res, next) => {
   res.status(200).json({ message: 'Deleted music post.' })
 }
 
+const createRespinPost = async (req, res, next) => {
+  const { musicPost } = req.body
+  const user = req.user
+
+  let existRespin
+  try {
+    existRespin = await RespinPost.findOne({ musicPost, creatorId: user.id })
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't resolve respin query.", 500))
+  }
+
+  if (existRespin)
+    return next(new HttpError("User already has respun music post.", 422))
+
+
+  const newRespinPost = new RespinPost({
+    musicPost,
+    creatorId: user.id
+  })
+
+  try {
+    const session = await mongoose.startSession()
+    session.startTransaction()
+
+    await newRespinPost.save({ session })
+    user.respinPosts.push(newRespinPost)
+    await user.save({ session })
+
+    await session.commitTransaction()
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't respin post.", 500))
+  }
+
+  res.status(201).json({ music: newRespinPost })
+}
+
+const deleteRespinPost = async (req, res, next) => {
+  const mid = req.params.mid
+
+  let respin
+  try {
+    respin = await RespinPost.findOne({ musicPost: mid, creatorId: req.user.id }).populate('creatorId')
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't delete respin.", 500))
+  }
+
+  if (!respin)
+    return next(new HttpError('No respin post found for provided ID.', 404))
+
+  if (respin.creatorId.id !== req.user.id)
+    return next(new HttpError('You are not allowed to delete this post!', 401))
+
+  try {
+    const session = await mongoose.startSession()
+    session.startTransaction()
+
+    await RespinPost.findByIdAndDelete(respin._id, { session })
+    respin.creatorId.respinPosts.pull(respin)
+    await respin.creatorId.save({ session })
+
+    await session.commitTransaction()
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't delete post.", 500))
+  }
+  res.status(200).json({ message: 'Deleted respin post.' })
+}
+
 exports.getPostById = getPostById
 exports.getPostsByUserId = getPostsByUserId
 exports.createMusicPost = createMusicPost
 exports.updateMusicPost = updateMusicPost
 exports.deleteMusicPost = deleteMusicPost
+exports.createRespinPost = createRespinPost
+exports.deleteRespinPost = deleteRespinPost
+exports.getRespinPosts = getRespinPosts
