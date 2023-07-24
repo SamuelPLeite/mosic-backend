@@ -58,6 +58,7 @@ const login = async (req, res, next) => {
   res.json({
     userId: existUser.id,
     username: existUser.name,
+    image: existUser.image,
     token
   })
 }
@@ -116,7 +117,12 @@ const signup = async (req, res, next) => {
     return next(new HttpError("Sign up error, do try again.", 500))
   }
 
-  res.status(201).json({ token, userId: newUser.id, username: newUser.name })
+  res.status(201).json({
+    token,
+    userId: newUser.id,
+    username: newUser.name,
+    image: existUser.image
+  })
 }
 
 exports.getUsers = getUsers

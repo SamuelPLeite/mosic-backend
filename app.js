@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 
 const express = require('express')
+const { config } = require('dotenv')
 const mongoose = require('mongoose')
 const cors = require('cors')
 
@@ -12,6 +13,8 @@ const { tokenExtractor } = require('./middleware/extractors')
 const HttpError = require('./models/http-error')
 
 const app = express()
+
+config()
 
 app.use(cors())
 app.use(express.json())
@@ -39,7 +42,8 @@ app.use((error, req, res, next) => {
   res.json({ message: error.message || 'Unknown error.' })
 })
 
-mongoose.connect('mongodb+srv://thesamhpl:FtuB64TcNHn8jn36@mosiccluster.mexbla0.mongodb.net/mosic?retryWrites=true&w=majority')
+console.log(`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@mosiccluster.mexbla0.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`)
+mongoose.connect(`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@mosiccluster.mexbla0.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`)
   .then(() => {
     app.listen(3001)
   }).catch(error => console.log(error))
