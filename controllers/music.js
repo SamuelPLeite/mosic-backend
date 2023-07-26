@@ -82,6 +82,95 @@ const getPostsByUserId = async (req, res, next) => {
   res.json({ userMusic: userPostsPop })
 }
 
+const getPostsByUserId2 = async (req, res, next) => {
+  const uid = req.params.uid
+
+  let user, userRespins, userMusic
+  try {
+    user = await User.findById(uid)
+      .populate({
+        path: 'respinPosts',
+        populate: {
+          path: 'musicPost',
+          populate: [{
+            path: 'comments',
+            populate: {
+              path: 'creatorId',
+              select: '_id name image'
+            }
+          },
+          {
+            path: 'creatorId',
+            select: '_id name image'
+          }]
+        }
+      })
+      .populate({
+        path: 'musicPosts',
+        populate: [{
+          path: 'comments',
+          populate: {
+            path: 'creatorId',
+            select: '_id name image'
+          }
+        },
+        {
+          path: 'creatorId',
+          select: '_id name image'
+        }]
+      })
+
+    userRespins = user.respinPosts.filter(respin => respin.musicPost !== null)
+    userMusic = user.musicPosts
+  } catch (err) {
+    console.log(err)
+    return next(new HttpError("Database error, couldn't find posts.", 500))
+  }
+
+  if (userMusic.length === 0 && userRespins.length === 0)
+    return next(new HttpError('No music posts found for the User ID.', 404))
+
+  const userPosts = userRespins ? userMusic.concat(userRespins) : userMusic
+  const userPostsSorted = userPosts.sort((a, b) => new Date(b._id.getTimestamp().getTime()) - new Date(a._id.getTimestamp().getTime())) // sorting based on id timestamp
+
+  res.json({ userMusic: userPostsSorted })
+}
+
+const getPostsSearch = async (req, res, next) => {
+  const query = req.query
+
+  const infoQuery = {}
+  for (const [key, value] of Object.entries(query)) {
+    infoQuery[`info.${key}`] = value
+  }
+
+  let music
+  try {
+    music = await MusicPost.find(infoQuery).populate({
+      path: 'comments',
+      populate: {
+        path: 'creatorId',
+        select: '_id name image'
+      }
+    }).populate({
+      path: 'creatorId',
+      select: '_id name image'
+    })
+  } catch (err) {
+    next(new HttpError("Database error, couldn't find post.", 500))
+    console.log(err)
+    return
+  }
+
+  if (!music)
+    return next(new HttpError('Invalid Music ID, no post found.', 404))
+
+  const musicAux = [...music]
+  musicAux.reverse()
+
+  res.json({ music: musicAux })
+}
+
 const getRespinPosts = async (req, res, next) => {
   const respinPosts = req.user.respinPosts.map(post => post.musicPost)
   res.json({ respinPosts })
@@ -94,7 +183,7 @@ const createMusicPost = async (req, res, next) => {
     return next(new HttpError('Invalid input detected.', 422))
   }
 
-  const { title, artist, description, image, rating, isSong } = req.body
+  const { title, artist, description, image, rating, isSong, info } = req.body
   const newMusicPost = new MusicPost({
     title,
     artist,
@@ -102,6 +191,7 @@ const createMusicPost = async (req, res, next) => {
     image,
     rating,
     isSong,
+    info,
     comments: [],
     likes: [],
     creatorId: req.user.id
@@ -254,9 +344,11 @@ const deleteRespinPost = async (req, res, next) => {
 
 exports.getPostById = getPostById
 exports.getPostsByUserId = getPostsByUserId
+exports.getPostsByUserId2 = getPostsByUserId2
 exports.createMusicPost = createMusicPost
 exports.updateMusicPost = updateMusicPost
 exports.deleteMusicPost = deleteMusicPost
 exports.createRespinPost = createRespinPost
 exports.deleteRespinPost = deleteRespinPost
 exports.getRespinPosts = getRespinPosts
+exports.getPostsSearch = getPostsSearch

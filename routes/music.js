@@ -9,9 +9,11 @@ const router = express.Router()
 
 router.get('/respin', userExtractor, musicControllers.getRespinPosts)
 
+router.get('/search', musicControllers.getPostsSearch)
+
 router.get('/:mid', musicControllers.getPostById)
 
-router.get('/user/:uid', musicControllers.getPostsByUserId)
+router.get('/user/:uid', musicControllers.getPostsByUserId2)
 
 router.post('/', userExtractor, [
   check('title').not().isEmpty(),

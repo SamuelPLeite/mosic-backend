@@ -121,7 +121,7 @@ const signup = async (req, res, next) => {
     token,
     userId: newUser.id,
     username: newUser.name,
-    image: existUser.image
+    image: newUser.image
   })
 }
 

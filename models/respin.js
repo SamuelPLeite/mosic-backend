@@ -15,9 +15,17 @@ const respinPostSchema = new mongoose.Schema({
 
 respinPostSchema.set('toJSON', {
   transform: (document, returnedObject) => {
-    returnedObject.id = returnedObject._id.toString()
+    returnedObject.respinId = returnedObject._id.toString()
     delete returnedObject._id
     delete returnedObject.__v
+
+    if (returnedObject.musicPost.title) {
+      for (const [key, value] of Object.entries(returnedObject.musicPost)) {
+        returnedObject[key] = value
+      }
+      delete returnedObject.musicPost
+    }
+
   }
 })
 
