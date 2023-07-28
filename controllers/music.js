@@ -18,7 +18,6 @@ const getPostById = async (req, res, next) => {
         select: '_id name image'
       }
     })
-    console.log(music.comments)
   } catch (err) {
     next(new HttpError("Database error, couldn't find post.", 500))
     console.log(err)
@@ -37,7 +36,8 @@ const getPostsByUserId = async (req, res, next) => {
   let userMusic
   try {
     userMusic = await MusicPost.find({ creatorId: uid }).lean().populate({
-      path: 'comments', populate: {
+      path: 'comments',
+      populate: {
         path: 'creatorId',
         select: '_id name image'
       }
@@ -102,6 +102,10 @@ const getPostsByUserId2 = async (req, res, next) => {
           {
             path: 'creatorId',
             select: '_id name image'
+          },
+          {
+            path: 'likes',
+            select: '_id name image'
           }]
         }
       })
@@ -116,6 +120,10 @@ const getPostsByUserId2 = async (req, res, next) => {
         },
         {
           path: 'creatorId',
+          select: '_id name image'
+        },
+        {
+          path: 'likes',
           select: '_id name image'
         }]
       })
@@ -154,6 +162,9 @@ const getPostsSearch = async (req, res, next) => {
       }
     }).populate({
       path: 'creatorId',
+      select: '_id name image'
+    }).populate({
+      path: 'likes',
       select: '_id name image'
     })
   } catch (err) {
@@ -236,6 +247,33 @@ const updateMusicPost = async (req, res, next) => {
   }
 
   res.status(200).json({ music })
+}
+
+const likeMusicPost = async (req, res, next) => {
+  const mid = req.params.mid
+  const { like } = req.body
+  const userId = req.user.id
+
+  let music
+  try {
+    music = await MusicPost.findById(mid)
+    if (like) {
+      if (!music.likes.includes(userId))
+        music.likes.unshift(userId)
+    } else {
+      music.likes.pull(userId)
+    }
+    music.save()
+  } catch (err) {
+    next(new HttpError("Database error, couldn't like post.", 500))
+    console.log(err)
+    return
+  }
+
+  if (!music)
+    return next(new HttpError('Invalid Music ID, no post found.', 404))
+
+  res.json({ music })
 }
 
 const deleteMusicPost = async (req, res, next) => {
@@ -352,3 +390,4 @@ exports.createRespinPost = createRespinPost
 exports.deleteRespinPost = deleteRespinPost
 exports.getRespinPosts = getRespinPosts
 exports.getPostsSearch = getPostsSearch
+exports.likeMusicPost = likeMusicPost

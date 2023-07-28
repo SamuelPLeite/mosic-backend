@@ -31,7 +31,7 @@ const createComment = async (req, res, next) => {
     session.startTransaction()
 
     await newComment.save({ session })
-    music.comments.push(newComment)
+    music.comments.unshift(newComment)
     await music.save({ session })
 
     await session.commitTransaction()

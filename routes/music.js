@@ -27,6 +27,8 @@ router.post('/comment', userExtractor, commentControllers.createComment)
 
 router.patch('/:mid', userExtractor, musicControllers.updateMusicPost)
 
+router.patch('/:mid/like', userExtractor, musicControllers.likeMusicPost)
+
 router.delete('/:mid', userExtractor, musicControllers.deleteMusicPost)
 
 router.delete('/respin/:mid', userExtractor, musicControllers.deleteRespinPost)
