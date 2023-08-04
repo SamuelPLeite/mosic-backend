@@ -13,7 +13,8 @@ router.get('/search', musicControllers.getPostsSearch)
 
 router.get('/:mid', musicControllers.getPostById)
 
-router.get('/user/:uid', musicControllers.getPostsByUserId2)
+router.get('/user/:uid', musicControllers.getPostsByUserIdAggregate)
+
 
 router.post('/', userExtractor, [
   check('title').not().isEmpty(),

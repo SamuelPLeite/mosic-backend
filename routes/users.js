@@ -6,7 +6,7 @@ const fileUpload = require('../middleware/file-upload')
 
 const router = express.Router()
 
-router.get('/', usersControllers.getUsers)
+router.get('/', usersControllers.getUsersWithLikesAndComments)
 
 router.post('/login', usersControllers.login)
 

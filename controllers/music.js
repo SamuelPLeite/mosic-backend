@@ -4,6 +4,7 @@ const mongoose = require('mongoose')
 const HttpError = require('../models/http-error')
 const MusicPost = require('../models/musicpost')
 const RespinPost = require('../models/respin')
+const Comment = require('../models/comment')
 const User = require('../models/user')
 
 const getPostById = async (req, res, next) => {
@@ -143,6 +144,293 @@ const getPostsByUserId2 = async (req, res, next) => {
 
   res.json({ userMusic: userPostsSorted })
 }
+
+const getPostsByUserIdAggregate = async (req, res, next) => {
+  const uid = req.params.uid;
+
+  try {
+    const userPosts = await User.aggregate([
+      {
+        $match: { _id: new mongoose.Types.ObjectId(uid) }
+      },
+      {
+        $lookup: {
+          from: 'respinposts',
+          localField: 'respinPosts',
+          foreignField: '_id',
+          pipeline: [{
+            $lookup: {
+              from: 'musicposts',
+              localField: 'musicPost',
+              foreignField: '_id',
+              let: { respin_id: '$_id' },
+              pipeline: [{
+                $lookup: {
+                  from: 'comments',
+                  localField: 'comments',
+                  foreignField: '_id',
+                  pipeline: [{
+                    $lookup: {
+                      from: 'users',
+                      localField: 'creatorId',
+                      foreignField: '_id',
+                      pipeline: [
+                        {
+                          $project: {
+                            id: "$_id",
+                            _id: 0,
+                            name: 1,
+                            image: 1
+                          }
+                        },
+                      ],
+                      as: 'creatorId'
+                    }
+                  }, {
+                    $addFields: {
+                      id: "$_id"
+                    }
+                  },
+                  {
+                    $project: {
+                      _id: 0,
+                      __v: 0
+                    }
+                  },
+                  {
+                    $unwind: "$creatorId"
+                  }],
+                  as: 'comments'
+                }
+              }, {
+                $lookup: {
+                  from: 'users',
+                  localField: 'likes',
+                  foreignField: '_id',
+                  pipeline: [
+                    {
+                      $project: {
+                        id: "$_id",
+                        _id: 0,
+                        name: 1,
+                        image: 1
+                      }
+                    }
+                  ],
+                  as: 'likes'
+                }
+              }, {
+                $lookup: {
+                  from: 'users',
+                  localField: 'creatorId',
+                  foreignField: '_id',
+                  pipeline: [
+                    {
+                      $project: {
+                        id: "$_id",
+                        _id: 0,
+                        name: 1,
+                        image: 1
+                      }
+                    }
+                  ],
+                  as: 'creatorId'
+                }
+              }, {
+                $addFields: {
+                  respinId: '$$respin_id',
+                  postDate: {
+                    "$toDate": {
+                      "$toObjectId": "$$respin_id"
+                    }
+                  }
+                }
+              }],
+              as: 'musicPost',
+            }
+          }, {
+            $addFields: {
+              "postDate": {
+                "$toDate": {
+                  "$toObjectId": "$_id"
+                }
+              }
+            }
+          }, {
+            "$match": {
+              "$expr": {
+                "$ne": [
+                  0,
+                  {
+                    $size: "$musicPost"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            $unwind: "$musicPost"
+          },
+          {
+            $replaceRoot: { newRoot: "$musicPost" }
+          },
+          {
+            $addFields: {
+              id: "$_id"
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              __v: 0
+            }
+          },
+          {
+            $unwind: "$creatorId"
+          }
+          ],
+          as: "respinPosts"
+        }
+      },
+      {
+        $lookup: {
+          from: 'musicposts',
+          localField: 'musicPosts',
+          foreignField: '_id',
+          pipeline: [{
+            $lookup: {
+              from: 'comments',
+              localField: 'comments',
+              foreignField: '_id',
+              pipeline: [{
+                $lookup: {
+                  from: 'users',
+                  localField: 'creatorId',
+                  foreignField: '_id',
+                  pipeline: [
+                    {
+                      $project: {
+                        id: "$_id",
+                        _id: 0,
+                        name: 1,
+                        image: 1
+                      }
+                    }
+                  ],
+                  as: 'creatorId'
+                }
+              },
+              {
+                $addFields: {
+                  id: "$_id"
+                }
+              },
+              {
+                $project: {
+                  _id: 0,
+                  __v: 0
+                }
+              },
+              {
+                $unwind: "$creatorId"
+              }],
+              as: 'comments'
+            }
+          }, {
+            $lookup: {
+              from: 'users',
+              localField: 'likes',
+              foreignField: '_id',
+              pipeline: [
+                {
+                  $project: {
+                    id: "$_id",
+                    _id: 0,
+                    name: 1,
+                    image: 1
+                  }
+                }
+              ],
+              as: 'likes'
+            }
+          }, {
+            $lookup: {
+              from: 'users',
+              localField: 'creatorId',
+              foreignField: '_id',
+              pipeline: [
+                {
+                  $project: {
+                    id: "$_id",
+                    _id: 0,
+                    name: 1,
+                    image: 1
+                  }
+                }
+              ],
+              as: 'creatorId'
+            }
+          },
+          {
+            $addFields: {
+              "postDate": {
+                "$toDate": {
+                  "$toObjectId": "$_id"
+                }
+              }
+            }
+          },
+          {
+            $addFields: {
+              id: "$_id"
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              __v: 0
+            }
+          },
+          {
+            $unwind: "$creatorId"
+          }],
+          as: 'musicPosts',
+        }
+      },
+      {
+        $addFields: {
+          posts: {
+            $sortArray:
+            {
+              input:
+              {
+                $concatArrays: ["$musicPosts", "$respinPosts"]
+              },
+              sortBy: {
+                postDate: -1
+              }
+            }
+          },
+          id: "$_id"
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          __v: 0,
+          musicPosts: 0,
+          respinPosts: 0,
+          password: 0,
+          email: 0
+        }
+      }
+    ]);
+    res.json({ userMusic: userPosts[0] });
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Database error, couldn't find posts.", 500));
+  }
+};
 
 const getPostsSearch = async (req, res, next) => {
   const query = req.query
@@ -298,6 +586,8 @@ const deleteMusicPost = async (req, res, next) => {
     session.startTransaction()
 
     await MusicPost.findByIdAndDelete(mid, { session })
+    await Comment.deleteMany({ musicPost: mid })
+    await RespinPost.deleteMany({ musicPost: mid })
     music.creatorId.musicPosts.pull(music)
     await music.creatorId.save({ session })
 
@@ -383,6 +673,7 @@ const deleteRespinPost = async (req, res, next) => {
 exports.getPostById = getPostById
 exports.getPostsByUserId = getPostsByUserId
 exports.getPostsByUserId2 = getPostsByUserId2
+exports.getPostsByUserIdAggregate = getPostsByUserIdAggregate
 exports.createMusicPost = createMusicPost
 exports.updateMusicPost = updateMusicPost
 exports.deleteMusicPost = deleteMusicPost
