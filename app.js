@@ -20,7 +20,11 @@ app.use(cors())
 app.use(express.json())
 
 app.use(tokenExtractor)
-app.use('/uploads/images', express.static(path.join('uploads', 'images')))
+
+const staticOptions = {
+  maxAge: '2d'
+}
+app.use('/uploads/images', express.static(path.join('uploads', 'images'), staticOptions))
 
 app.use('/api/music', musicRouter)
 app.use('/api/users', usersRouter)

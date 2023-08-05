@@ -153,7 +153,7 @@ const getPostsByUserIdAggregate = async (req, res, next) => {
       {
         $match: { _id: new mongoose.Types.ObjectId(uid) }
       },
-      {
+      { /* Deep lookup to populate all fields of respin posts */
         $lookup: {
           from: 'respinposts',
           localField: 'respinPosts',
@@ -199,6 +199,11 @@ const getPostsByUserIdAggregate = async (req, res, next) => {
                   },
                   {
                     $unwind: "$creatorId"
+                  },
+                  {
+                    $sort: {
+                      id: -1
+                    }
                   }],
                   as: 'comments'
                 }
@@ -292,7 +297,7 @@ const getPostsByUserIdAggregate = async (req, res, next) => {
           as: "respinPosts"
         }
       },
-      {
+      { /* Deep lookup to populate all fields of regular posts */
         $lookup: {
           from: 'musicposts',
           localField: 'musicPosts',
@@ -333,6 +338,11 @@ const getPostsByUserIdAggregate = async (req, res, next) => {
               },
               {
                 $unwind: "$creatorId"
+              },
+              {
+                $sort: {
+                  id: -1
+                }
               }],
               as: 'comments'
             }
@@ -431,6 +441,159 @@ const getPostsByUserIdAggregate = async (req, res, next) => {
     return next(new HttpError("Database error, couldn't find posts.", 500));
   }
 };
+
+const getPostsLikedByUser = async (req, res, next) => {
+  const uid = req.params.uid;
+
+  try {
+    const userPosts = await User.aggregate([
+      {
+        $match: { _id: new mongoose.Types.ObjectId(uid) }
+      },
+      {
+        $lookup: {
+          from: 'musicposts',
+          localField: '_id',
+          foreignField: 'likes',
+          pipeline: [{
+            $lookup: {
+              from: 'comments',
+              localField: 'comments',
+              foreignField: '_id',
+              pipeline: [{
+                $lookup: {
+                  from: 'users',
+                  localField: 'creatorId',
+                  foreignField: '_id',
+                  pipeline: [
+                    {
+                      $project: {
+                        id: "$_id",
+                        _id: 0,
+                        name: 1,
+                        image: 1
+                      }
+                    }
+                  ],
+                  as: 'creatorId'
+                }
+              },
+              {
+                $addFields: {
+                  id: "$_id"
+                }
+              },
+              {
+                $project: {
+                  _id: 0,
+                  __v: 0
+                }
+              },
+              {
+                $unwind: "$creatorId"
+              },
+              {
+                $sort: {
+                  id: -1
+                }
+              }],
+              as: 'comments'
+            }
+          }, {
+            $lookup: {
+              from: 'users',
+              localField: 'likes',
+              foreignField: '_id',
+              pipeline: [
+                {
+                  $project: {
+                    id: "$_id",
+                    _id: 0,
+                    name: 1,
+                    image: 1
+                  }
+                }
+              ],
+              as: 'likes'
+            }
+          }, {
+            $lookup: {
+              from: 'users',
+              localField: 'creatorId',
+              foreignField: '_id',
+              pipeline: [
+                {
+                  $project: {
+                    id: "$_id",
+                    _id: 0,
+                    name: 1,
+                    image: 1
+                  }
+                }
+              ],
+              as: 'creatorId'
+            }
+          },
+          {
+            $addFields: {
+              "postDate": {
+                "$toDate": {
+                  "$toObjectId": "$_id"
+                }
+              }
+            }
+          },
+          {
+            $addFields: {
+              id: "$_id"
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              __v: 0
+            }
+          },
+          {
+            $unwind: "$creatorId"
+          }],
+          as: 'userLikes'
+        }
+      },
+      {
+        $addFields: {
+          postsLiked: {
+            $sortArray:
+            {
+              input:
+                "$userLikes",
+              sortBy: {
+                postDate: -1
+              }
+            }
+          },
+          id: "$_id"
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          __v: 0,
+          musicPosts: 0,
+          respinPosts: 0,
+          userLikes: 0,
+          password: 0,
+          email: 0
+        }
+      }
+    ])
+    res.json({ userMusic: userPosts[0] });
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Database error, couldn't find posts.", 500));
+  }
+
+}
 
 const getPostsSearch = async (req, res, next) => {
   const query = req.query
@@ -674,6 +837,7 @@ exports.getPostById = getPostById
 exports.getPostsByUserId = getPostsByUserId
 exports.getPostsByUserId2 = getPostsByUserId2
 exports.getPostsByUserIdAggregate = getPostsByUserIdAggregate
+exports.getPostsLikedByUser = getPostsLikedByUser
 exports.createMusicPost = createMusicPost
 exports.updateMusicPost = updateMusicPost
 exports.deleteMusicPost = deleteMusicPost

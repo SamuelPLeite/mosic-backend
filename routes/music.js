@@ -15,6 +15,7 @@ router.get('/:mid', musicControllers.getPostById)
 
 router.get('/user/:uid', musicControllers.getPostsByUserIdAggregate)
 
+router.get('/user/likes/:uid/', musicControllers.getPostsLikedByUser)
 
 router.post('/', userExtractor, [
   check('title').not().isEmpty(),
