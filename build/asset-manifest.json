@@ -1,0 +1,27 @@
+{
+  "files": {
+    "main.css": "/static/css/main.dcf306a5.css",
+    "main.js": "/static/js/main.bb9080cf.js",
+    "static/media/ufpr_logo.png": "/static/media/ufpr_logo.f170f504fe3c2077e376.png",
+    "static/media/react_logo.png": "/static/media/react_logo.8a6fc0a24a800d1e0f4a.png",
+    "static/media/mongodb_logo.png": "/static/media/mongodb_logo.41e505b098e3087319b8.png",
+    "static/media/vinyl.png": "/static/media/vinyl.87a0012940cc4a9ca386.png",
+    "static/media/c3sl_logo.png": "/static/media/c3sl_logo.05cc1101e3f71f859eb4.png",
+    "static/media/postgresql_logo.png": "/static/media/postgresql_logo.a7fa39912c91e079e90b.png",
+    "static/media/typescript_logo.png": "/static/media/typescript_logo.52ea0bc40ba11d507e7d.png",
+    "static/media/bash_logo.jpg": "/static/media/bash_logo.3443da361a2091965bbe.jpg",
+    "static/media/html5_logo.png": "/static/media/html5_logo.a14c78b13246722e1054.png",
+    "static/media/nodejs_2logo.png": "/static/media/nodejs_2logo.9fea1c7da2bd42ab93bf.png",
+    "static/media/css_logo.jpg": "/static/media/css_logo.baaeca01dbfa212a049d.jpg",
+    "static/media/linkedin_logo.png": "/static/media/linkedin_logo.bb933d6809d6410387a0.png",
+    "static/media/fsopen_logo.png": "/static/media/fsopen_logo.dbb845d3199d5a3b9fa9.png",
+    "static/media/expressjs_logo.png": "/static/media/expressjs_logo.e3d4f9e5c8b469e45838.png",
+    "index.html": "/index.html",
+    "main.dcf306a5.css.map": "/static/css/main.dcf306a5.css.map",
+    "main.bb9080cf.js.map": "/static/js/main.bb9080cf.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.dcf306a5.css",
+    "static/js/main.bb9080cf.js"
+  ]
+}

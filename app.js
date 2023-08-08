@@ -11,6 +11,7 @@ const usersRouter = require('./routes/users')
 const deezerRouter = require('./routes/deezer')
 const { tokenExtractor } = require('./middleware/extractors')
 const HttpError = require('./models/http-error')
+const { ppid } = require('process')
 
 const app = express()
 
@@ -18,6 +19,7 @@ config()
 
 app.use(cors())
 app.use(express.json())
+app.use(express.static('build'))
 
 app.use(tokenExtractor)
 
@@ -46,8 +48,8 @@ app.use((error, req, res, next) => {
   res.json({ message: error.message || 'Unknown error.' })
 })
 
-console.log(`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@mosiccluster.mexbla0.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`)
+const PORT = process.env.PORT || 3001
 mongoose.connect(`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@mosiccluster.mexbla0.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`)
   .then(() => {
-    app.listen(3001)
+    app.listen(PORT)
   }).catch(error => console.log(error))
