@@ -78,7 +78,6 @@ const getPostsByUserId = async (req, res, next) => {
   const userPostsSorted = userPosts.sort((a, b) => new Date(b._id.getTimestamp().getTime()) - new Date(a._id.getTimestamp().getTime())) // sorting based on id timestamp
   const userPostsPop = userPostsSorted.map(post => post.musicPost ? { ...post.musicPost, respinId: post._id } : post) // populates respin posts into 'regular' posts
     .map(({ __v, _id, ...rest }) => ({ id: _id.toString(), ...rest })) // because of lean(), manually removing __v, id to string
-  console.log(userPostsPop)
 
   res.json({ userMusic: userPostsPop })
 }

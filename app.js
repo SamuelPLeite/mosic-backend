@@ -19,7 +19,6 @@ config()
 
 app.use(cors())
 app.use(express.json())
-app.use(express.static('build'))
 
 app.use(tokenExtractor)
 
@@ -32,8 +31,9 @@ app.use('/api/music', musicRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/deezer', deezerRouter)
 
-app.use((req, res, next) => {
-  throw new HttpError('Route not found.', 404)
+app.use(express.static('build'))
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 })
 
 app.use((error, req, res, next) => {

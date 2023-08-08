@@ -16,7 +16,7 @@ const tokenExtractor = (request, response, next) => {
 const userExtractor = async (request, response, next) => {
   let decodedToken
   try {
-    decodedToken = jwt.verify(request.token, 'secret-key-kaka')
+    decodedToken = jwt.verify(request.token, process.env.JWT_SECRET_KEY)
   } catch (err) {
     return next(new HttpError('You need to login first!', 403))
   }

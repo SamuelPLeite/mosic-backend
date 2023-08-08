@@ -8,7 +8,6 @@ router.post('/', async (req, res, next) => {
 
   const isTrackString = isSong ? 'track' : 'album'
   const queryString = `https://api.deezer.com/search/${isTrackString}?q=artist:"${artist}" ${isTrackString}:"${title}"`
-  console.log(queryString)
 
   const response = await axios.get(queryString)
 
