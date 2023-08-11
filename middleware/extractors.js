@@ -18,7 +18,7 @@ const userExtractor = async (request, response, next) => {
   try {
     decodedToken = jwt.verify(request.token, process.env.JWT_SECRET_KEY)
   } catch (err) {
-    return next(new HttpError('You need to login first!', 403))
+    return next(new HttpError('You need to log in first!', 403))
   }
   request.user = await User.findById(decodedToken.userId).populate('respinPosts', 'musicPost')
 

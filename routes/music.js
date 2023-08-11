@@ -9,7 +9,7 @@ const router = express.Router()
 
 router.get('/respin', userExtractor, musicControllers.getRespinPosts)
 
-router.get('/search', musicControllers.getPostsSearch)
+router.get('/search', musicControllers.getPostsSearchAggregate)
 
 router.get('/:mid', musicControllers.getPostById)
 

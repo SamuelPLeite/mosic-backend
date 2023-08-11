@@ -31,6 +31,7 @@ const getPostById = async (req, res, next) => {
   res.json({ music })
 }
 
+/* not in use */
 const getPostsByUserId = async (req, res, next) => {
   const uid = req.params.uid
 
@@ -81,7 +82,7 @@ const getPostsByUserId = async (req, res, next) => {
 
   res.json({ userMusic: userPostsPop })
 }
-
+/* not in use */
 const getPostsByUserId2 = async (req, res, next) => {
   const uid = req.params.uid
 
@@ -594,6 +595,7 @@ const getPostsLikedByUser = async (req, res, next) => {
 
 }
 
+/* not in use */
 const getPostsSearch = async (req, res, next) => {
   const query = req.query
 
@@ -630,6 +632,132 @@ const getPostsSearch = async (req, res, next) => {
   musicAux.reverse()
 
   res.json({ music: musicAux })
+}
+
+const getPostsSearchAggregate = async (req, res, next) => {
+  const query = req.query
+
+  const infoQuery = {}
+  for (const [key, value] of Object.entries(query)) {
+    infoQuery[`info.${key}`] = value
+  }
+
+  try {
+    const searchPosts = await MusicPost.aggregate([
+      {
+        $match: infoQuery,
+      },
+      {
+        $lookup: {
+          from: 'comments',
+          localField: 'comments',
+          foreignField: '_id',
+          pipeline: [{
+            $lookup: {
+              from: 'users',
+              localField: 'creatorId',
+              foreignField: '_id',
+              pipeline: [
+                {
+                  $project: {
+                    id: "$_id",
+                    _id: 0,
+                    name: 1,
+                    image: 1
+                  }
+                }
+              ],
+              as: 'creatorId'
+            }
+          },
+          {
+            $addFields: {
+              id: "$_id"
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              __v: 0
+            }
+          },
+          {
+            $unwind: "$creatorId"
+          },
+          {
+            $sort: {
+              id: -1
+            }
+          }],
+          as: 'comments'
+        }
+      }, {
+        $lookup: {
+          from: 'users',
+          localField: 'likes',
+          foreignField: '_id',
+          pipeline: [
+            {
+              $project: {
+                id: "$_id",
+                _id: 0,
+                name: 1,
+                image: 1
+              }
+            }
+          ],
+          as: 'likes'
+        }
+      }, {
+        $lookup: {
+          from: 'users',
+          localField: 'creatorId',
+          foreignField: '_id',
+          pipeline: [
+            {
+              $project: {
+                id: "$_id",
+                _id: 0,
+                name: 1,
+                image: 1
+              }
+            }
+          ],
+          as: 'creatorId'
+        }
+      },
+      {
+        $addFields: {
+          "postDate": {
+            "$toDate": {
+              "$toObjectId": "$_id"
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          id: "$_id"
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          __v: 0
+        }
+      },
+      {
+        $unwind: "$creatorId"
+      },
+      {
+        $sort: { postDate: -1 }
+      }
+    ])
+    res.json({ music: searchPosts });
+  } catch (err) {
+    console.log(err);
+    return next(new HttpError("Database error, couldn't find posts.", 500));
+  }
 }
 
 const getRespinPosts = async (req, res, next) => {
@@ -844,4 +972,5 @@ exports.createRespinPost = createRespinPost
 exports.deleteRespinPost = deleteRespinPost
 exports.getRespinPosts = getRespinPosts
 exports.getPostsSearch = getPostsSearch
+exports.getPostsSearchAggregate = getPostsSearchAggregate
 exports.likeMusicPost = likeMusicPost
